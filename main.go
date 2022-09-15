@@ -15,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	kafkaclients "github.com/superbet-group/kafka.clients/v3"
 	registry "github.com/superbet-group/proto.registry"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
@@ -28,6 +29,8 @@ var r *registry.Registry
 var stringList binding.StringList
 
 type State struct {
+	brokers             string
+	marshalerType       string
 	descriptors         []string
 	protoConversionMap  map[string]string
 	chosenProtoFullName string
@@ -53,8 +56,6 @@ func main() {
 	sort.Strings(protos)
 	state.descriptors = protos
 	stringList = binding.NewStringList()
-
-	producer = newKafkaProducer("")
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Connections", setContent("Connections")),
@@ -140,8 +141,15 @@ func setContent(tab string) *fyne.Container {
 	return l
 }
 
-func createConnections() *widget.Entry {
-	return widget.NewEntry()
+func createConnections() *fyne.Container {
+	entry := widget.NewEntry()
+	entry.OnSubmitted = func(brokers string) {
+		fmt.Println("test")
+		state.brokers = brokers
+		producer = newKafkaProducer(brokers, "")
+	}
+
+	return container.NewBorder(entry, nil, nil, nil)
 }
 
 func createChooseProtoDescriptor() *widget.List {
@@ -174,18 +182,44 @@ func createChooseProtoDescriptor() *widget.List {
 }
 
 func createProduce() *fyne.Container {
+	topicName := widget.NewLabel("Topic name:")
 	topicField := widget.NewEntry()
+	marshalerType := widget.NewSelect(
+		[]string{"text", "json"},
+		func(option string) {
+			state.marshalerType = option
+		},
+	)
+
+	marshalerType.SetSelected("json")
+	marshalerTypeName := widget.NewLabel("Marshaler type name:")
+
 	messageValueField := widget.NewMultiLineEntry()
+	messageFieldName := widget.NewLabel("Message:")
 	submitButton := widget.NewButton("Submit", func() {
 		val := []byte(messageValueField.Text)
 
 		if state.chosenProtoFullName != "" {
-			err := prototext.Unmarshal(val, &state.chosenProtoMessage)
-			if err != nil {
-				fmt.Println(err)
-				return
+			switch state.marshalerType {
+			case "text":
+				err := prototext.Unmarshal(val, &state.chosenProtoMessage)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+
+			case "json":
+				err := protojson.Unmarshal(val, &state.chosenProtoMessage)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+
+			default:
+				fmt.Println("unknown producer type, not going to use protobuf")
 			}
 
+			var err error
 			val, err = proto.Marshal(&state.chosenProtoMessage)
 			if err != nil {
 				fmt.Println(err)
@@ -205,7 +239,10 @@ func createProduce() *fyne.Container {
 		fmt.Println("submitted")
 	})
 
-	return container.NewVBox(topicField, messageValueField, submitButton)
+	topicBorder := container.NewBorder(nil, nil, topicName, nil, topicField)
+	marshalerTypeBorder := container.NewBorder(nil, nil, marshalerTypeName, nil, marshalerType)
+	messageBorder := container.NewBorder(nil, nil, messageFieldName, nil, messageValueField)
+	return container.NewVBox(topicBorder, marshalerTypeBorder, messageBorder, submitButton)
 }
 
 func createConsume() *fyne.Container {
@@ -218,10 +255,11 @@ func createConsume() *fyne.Container {
 			o.(*widget.Label).Bind(i.(binding.String))
 		},
 	)
+	topicName := widget.NewLabel("Topic name:")
 	topicField := widget.NewEntry()
 	consumeButton := widget.NewButton("Consume", func() {
 		go func() {
-			consumer = newKafkaConsumer(topicField.Text, 0, 1, "")
+			consumer = newKafkaConsumer(state.brokers, topicField.Text, 0, 1, "")
 			for {
 				kafkaMessages, _, err := consumer.Consume(context.TODO(), 0, 0, make(map[string]interface{}))
 				if err != nil {
@@ -250,5 +288,6 @@ func createConsume() *fyne.Container {
 		}()
 	})
 
-	return container.NewBorder(container.NewVBox(topicField, consumeButton), nil, nil, nil, newMessageScreen)
+	topicBorder := container.NewBorder(nil, nil, topicName, nil, topicField)
+	return container.NewBorder(container.NewVBox(topicBorder, consumeButton), nil, nil, nil, newMessageScreen)
 }

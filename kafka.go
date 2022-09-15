@@ -9,12 +9,12 @@ import (
 )
 
 func newKafkaConsumer(
+	brokers string,
 	topic string,
 	index int32,
 	count int32,
 	debugConfig string,
 ) *kafkaclients.Consumer {
-	brokers := "localhost:29092"
 	topics := []string{topic}
 	configMap := make(map[string]interface{})
 	configMap["auto.offset.reset"] = "latest"
@@ -70,6 +70,7 @@ func prepareConsumer(
 }
 
 func newKafkaProducer(
+	brokers string,
 	debugConfig string,
 ) *kafkaclients.Producer {
 	configMap := make(map[string]interface{})
@@ -80,13 +81,13 @@ func newKafkaProducer(
 	var kafkaProducer *kafkaclients.Producer
 	err := backoff.Retry(
 		func() error {
-			p, err := kafkaclients.NewProducer("localhost:29092", configMap, producerConfig)
+			p, err := kafkaclients.NewProducer(brokers, configMap, producerConfig)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
 
 			// if an error occurs, exponential backoff is used for retrying
-			err = prepareProducer(p, "localhost:29092")
+			err = prepareProducer(p, brokers)
 			if err != nil {
 				return err
 			}

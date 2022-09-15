@@ -2,11 +2,15 @@ module github.com/superbet-group/kafka.tool
 
 go 1.18
 
-require fyne.io/fyne/v2 v2.2.3
+require (
+	fyne.io/fyne/v2 v2.2.3
+	github.com/cenkalti/backoff v2.2.1+incompatible
+	github.com/confluentinc/confluent-kafka-go v1.9.2
+)
 
 require (
 	github.com/pkg/errors v0.9.1 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/protobuf v1.28.0 // indirect
 )
 
 require (
@@ -27,7 +31,8 @@ require (
 	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564 // indirect
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9 // indirect
 	github.com/stretchr/testify v1.7.2 // indirect
-	github.com/superbet-group/proto.registry v1.1.1
+	github.com/superbet-group/kafka.clients/v3 v3.7.0
+	github.com/superbet-group/proto.registry v1.1.2
 	github.com/tevino/abool v1.2.0 // indirect
 	github.com/yuin/goldmark v1.4.0 // indirect
 	golang.org/x/image v0.0.0-20220601225756-64ec528b34cd // indirect

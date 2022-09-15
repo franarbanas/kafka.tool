@@ -148,25 +148,15 @@ func createConnections() *fyne.Container {
 		state.brokers = brokers
 		producer = newKafkaProducer(brokers, "")
 	}
+	entry.SetText("localhost:29092")
+	entry.OnSubmitted("localhost:29092")
 
 	return container.NewBorder(entry, nil, nil, nil)
 }
 
-func createChooseProtoDescriptor() *widget.List {
-	protobufSelection := widget.NewList(
-		func() int {
-			return len(state.descriptors)
-		},
-		func() fyne.CanvasObject {
-			return widget.NewLabel("protobuf")
-		},
-		func(i int, o fyne.CanvasObject) {
-			o.(*widget.Label).SetText(state.descriptors[i])
-		},
-	)
-
-	protobufSelection.OnSelected = func(id int) {
-		chosenProtoFullName := state.descriptors[id]
+func createChooseProtoDescriptor() *fyne.Container {
+	protobufSelector := widget.NewSelect(state.descriptors, func(option string) {
+		chosenProtoFullName := option
 
 		chosenProtoMessage, err := r.FindCorrectProtoDefinition(chosenProtoFullName, state.protoConversionMap[chosenProtoFullName])
 		if err != nil {
@@ -176,9 +166,9 @@ func createChooseProtoDescriptor() *widget.List {
 
 		state.chosenProtoMessage = chosenProtoMessage
 		state.chosenProtoFullName = chosenProtoFullName
-	}
+	})
 
-	return protobufSelection
+	return container.NewBorder(protobufSelector, nil, nil, nil)
 }
 
 func createProduce() *fyne.Container {
